@@ -1,4 +1,5 @@
 #include "inventory.h"
+#include "port/switch/haptics.h"
 #include "hud_element.h"
 #include "dx/config.h"
 #include "port/Engine.h"
@@ -2221,6 +2222,7 @@ s32 add_coins(s32 amt) {
     }
 
     if (amt > 0) {
+        Paperboat_Haptic(PB_HAPTIC_COIN);
         playerData->totalCoinsEarned += amt;
         if (playerData->totalCoinsEarned > 99999) {
             playerData->totalCoinsEarned = 99999;
@@ -2232,6 +2234,10 @@ s32 add_coins(s32 amt) {
 s32 add_star_points(s32 amt) {
     PlayerData* playerData = &gPlayerData;
     s8 newSP = playerData->starPoints + amt;
+
+    if (amt > 0) {
+        Paperboat_Haptic(PB_HAPTIC_STAR_POINT);
+    }
 
     // TODO: probably a macro!
     playerData->starPoints = newSP;
@@ -2261,6 +2267,7 @@ s32 add_star_pieces(s32 amt) {
     playerData->starPieces = newSP;
 
     if (amt > 0) {
+        Paperboat_Haptic(PB_HAPTIC_STAR_PIECE);
         playerData->starPiecesCollected += amt;
     }
 
@@ -2302,6 +2309,9 @@ void add_star_power(s32 amt) {
 }
 
 s32 recover_fp(s32 amt) {
+    if (amt != 0) {
+        Paperboat_Haptic(PB_HAPTIC_RECOVER_FP);
+    }
     if (amt == -2) {
         gPlayerData.curMaxFP++;
         gPlayerData.curFP = gPlayerData.curMaxFP;
@@ -2319,6 +2329,9 @@ s32 recover_fp(s32 amt) {
 }
 
 s32 recover_hp(s32 amt) {
+    if (amt != 0) {
+        Paperboat_Haptic(PB_HAPTIC_RECOVER_HP);
+    }
     if (amt == -2) {
         gPlayerData.curMaxHP++;
         gPlayerData.curHP = gPlayerData.curMaxHP;

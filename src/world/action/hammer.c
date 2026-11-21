@@ -1,4 +1,5 @@
 #include "common.h"
+#include "port/switch/haptics.h"
 #include "effects.h"
 #include "sprite.h"
 #include "sprite/player.h"
@@ -51,6 +52,8 @@ void action_hammer_play_hit_fx(s32 hitID) {
     f32 theta, sinTheta, cosTheta;
     s32 numParticles;
     f32 x, y, z;
+
+    Paperboat_Haptic(PB_HAPTIC_HAMMER_FIELD);
 
     if (gPlayerData.hammerLevel == 2) {
         shakeAmt = 1.2f;

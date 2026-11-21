@@ -189,17 +189,146 @@ foreach ($code in 0..($GlyphCount - 1)) {
     $glyphData.Add((Convert-ToIndices $cov))
 }
 
+# ------------------------------------------------------- Switch button icons
+# Simple original shapes in the text colour (index 1) with the label cut out
+# in the background colour (index 6), so they adapt to every text palette.
+# The order is the icon id used by HDFont.cpp (HdIcon enum).
+$iconNames = @("A", "B", "X", "Y", "L", "R", "ZL", "ZR", "PLUS", "MINUS",
+    "RS_UP", "RS_DOWN", "RS_LEFT", "RS_RIGHT", "LS_UP", "LS_DOWN", "LS_LEFT", "LS_RIGHT",
+    "DPAD_UP", "DPAD_DOWN", "DPAD_LEFT", "DPAD_RIGHT")
+
+$IconLeft = 4.0; $IconCenterY = 34.0; $IconDiameter = 40.0
+
+function Get-PathCoverage([System.Drawing.Drawing2D.GraphicsPath]$path, [float]$stroke) {
+    $bmp = New-Object System.Drawing.Bitmap $Cell, $Cell, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+    $g.Clear([System.Drawing.Color]::Transparent)
+    $g.FillPath([System.Drawing.Brushes]::White, $path)
+    if ($stroke -gt 0) {
+        $p = New-Object System.Drawing.Pen ([System.Drawing.Color]::White), $stroke
+        $p.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+        $g.DrawPath($p, $path)
+    }
+    $g.Dispose()
+    $rect = New-Object System.Drawing.Rectangle 0, 0, $Cell, $Cell
+    $data = $bmp.LockBits($rect, [System.Drawing.Imaging.ImageLockMode]::ReadOnly, $bmp.PixelFormat)
+    $raw = New-Object byte[] ($data.Stride * $Cell)
+    [System.Runtime.InteropServices.Marshal]::Copy($data.Scan0, $raw, 0, $raw.Length)
+    $bmp.UnlockBits($data)
+    $bmp.Dispose()
+    $cov = New-Object byte[] ($Cell * $Cell)
+    for ($y = 0; $y -lt $Cell; $y++) {
+        for ($x = 0; $x -lt $Cell; $x++) { $cov[$y * $Cell + $x] = $raw[$y * $data.Stride + $x * 4 + 3] }
+    }
+    return , $cov
+}
+
+function Add-CenteredText([System.Drawing.Drawing2D.GraphicsPath]$path, [string]$text, [float]$height,
+    [float]$cx, [float]$cy, [float]$maxWidth) {
+    $t = New-GlyphPath $text 100
+    $tb = $t.GetBounds()
+    $s = $height / $tb.Height
+    if ($tb.Width * $s -gt $maxWidth) { $s = $maxWidth / $tb.Width }
+    $m = New-Object System.Drawing.Drawing2D.Matrix
+    $m.Translate($cx, $cy)
+    $m.Scale($s, $s)
+    $m.Translate( - ($tb.Left + $tb.Width / 2), - ($tb.Top + $tb.Height / 2))
+    $t.Transform($m)
+    $path.AddPath($t, $false)
+}
+
+function Add-Arrow([System.Drawing.Drawing2D.GraphicsPath]$path, [string]$dir, [float]$cx, [float]$cy, [float]$size) {
+    $h = $size / 2
+    switch ($dir) {
+        "UP" { $pts = @(@($cx, ($cy - $h)), @(($cx + $h), ($cy + $h * 0.6)), @(($cx - $h), ($cy + $h * 0.6))) }
+        "DOWN" { $pts = @(@($cx, ($cy + $h)), @(($cx - $h), ($cy - $h * 0.6)), @(($cx + $h), ($cy - $h * 0.6))) }
+        "LEFT" { $pts = @(@(($cx - $h), $cy), @(($cx + $h * 0.6), ($cy - $h)), @(($cx + $h * 0.6), ($cy + $h))) }
+        "RIGHT" { $pts = @(@(($cx + $h), $cy), @(($cx - $h * 0.6), ($cy + $h)), @(($cx - $h * 0.6), ($cy - $h))) }
+    }
+    $points = New-Object 'System.Drawing.PointF[]' 3
+    for ($i = 0; $i -lt 3; $i++) { $points[$i] = New-Object System.Drawing.PointF ([float]$pts[$i][0]), ([float]$pts[$i][1]) }
+    $path.AddPolygon($points)
+}
+
+function Add-RoundRect([System.Drawing.Drawing2D.GraphicsPath]$path, [float]$x, [float]$y, [float]$w, [float]$h, [float]$r) {
+    $d = 2 * $r
+    $path.AddArc($x, $y, $d, $d, 180, 90)
+    $path.AddArc($x + $w - $d, $y, $d, $d, 270, 90)
+    $path.AddArc($x + $w - $d, $y + $h - $d, $d, $d, 0, 90)
+    $path.AddArc($x, $y + $h - $d, $d, $d, 90, 90)
+    $path.CloseFigure()
+}
+
+function New-Icon([string]$name) {
+    $body = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $cut = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $cx = $IconLeft + $IconDiameter / 2
+    $cy = $IconCenterY
+    if (@("A", "B", "X", "Y", "PLUS", "MINUS") -contains $name) {
+        $body.AddEllipse($IconLeft, $cy - $IconDiameter / 2, $IconDiameter, $IconDiameter)
+        if ($name -eq "PLUS") {
+            $body2 = $null
+            $cut.AddRectangle((New-Object System.Drawing.RectangleF ($cx - 3), ($cy - 12), 6, 24))
+            $cut.AddRectangle((New-Object System.Drawing.RectangleF ($cx - 12), ($cy - 3), 24, 6))
+        } elseif ($name -eq "MINUS") {
+            $cut.AddRectangle((New-Object System.Drawing.RectangleF ($cx - 12), ($cy - 3), 24, 6))
+        } else {
+            Add-CenteredText $cut $name 22 $cx $cy 24
+        }
+    } elseif (@("L", "R", "ZL", "ZR") -contains $name) {
+        Add-RoundRect $body $IconLeft ($cy - 15) 44 30 13
+        Add-CenteredText $cut $name 18 ($IconLeft + 22) $cy 34
+    } elseif ($name.StartsWith("RS_") -or $name.StartsWith("LS_")) {
+        # Stick: a disc with the stick letter and an arrow towards the direction.
+        $body.AddEllipse($IconLeft, $cy - $IconDiameter / 2, $IconDiameter, $IconDiameter)
+        $dir = $name.Substring(3)
+        $ox = 0; $oy = 0
+        switch ($dir) { "UP" { $oy = -1 } "DOWN" { $oy = 1 } "LEFT" { $ox = -1 } "RIGHT" { $ox = 1 } }
+        Add-Arrow $cut $dir ($cx + $ox * 10) ($cy + $oy * 10) 13
+        $letter = "R"
+        if ($name.StartsWith("LS_")) { $letter = "L" }
+        Add-CenteredText $cut $letter 13 ($cx - $ox * 5) ($cy - $oy * 5) 12
+    } else {
+        # D-pad: a cross with an arrow cut into the pressed arm.
+        $arm = 14.0
+        $body.AddRectangle((New-Object System.Drawing.RectangleF ($cx - $arm / 2), ($cy - 20), $arm, 40))
+        $body.AddRectangle((New-Object System.Drawing.RectangleF ($cx - 20), ($cy - $arm / 2), 40, $arm))
+        $dir = $name.Substring(5)
+        $ox = 0; $oy = 0
+        switch ($dir) { "UP" { $oy = -1 } "DOWN" { $oy = 1 } "LEFT" { $ox = -1 } "RIGHT" { $ox = 1 } }
+        Add-Arrow $cut $dir ($cx + $ox * 12) ($cy + $oy * 12) 10
+    }
+    $body.FillMode = [System.Drawing.Drawing2D.FillMode]::Winding
+    $cut.FillMode = [System.Drawing.Drawing2D.FillMode]::Alternate
+    $bodyCov = Get-PathCoverage $body 0
+    $cutCov = Get-PathCoverage $cut 1.5
+    $idx = Convert-ToIndices $bodyCov
+    for ($i = 0; $i -lt $idx.Length; $i++) {
+        if ($bodyCov[$i] -lt 128) { continue }
+        if ($cutCov[$i] -ge 128) { $idx[$i] = 6 }
+        elseif ($cutCov[$i] -ge 40) { $idx[$i] = 5 }
+    }
+    return , $idx
+}
+
+$iconData = New-Object System.Collections.Generic.List[byte[]]
+foreach ($name in $iconNames) { $iconData.Add((New-Icon $name)) }
+
 $stream = [System.IO.File]::Create((Join-Path (Get-Location) $Output))
 $writer = New-Object System.IO.BinaryWriter $stream
 $writer.Write([System.Text.Encoding]::ASCII.GetBytes("PBHF"))
-$writer.Write([uint16]1)
+$writer.Write([uint16]2)
 $writer.Write([uint16]$Cell)
 $writer.Write([uint16]$GlyphCount)
-$writer.Write([uint16]0)
+$writer.Write([uint16]$iconData.Count)
 $writer.Write($present)
 foreach ($glyph in $glyphData) { $writer.Write($glyph) }
+foreach ($icon in $iconData) { $writer.Write($icon) }
 $writer.Close()
-Write-Host "wrote $Output ($($glyphData.Count) glyphs, $Cell x $Cell)"
+Write-Host "wrote $Output ($($glyphData.Count) glyphs, $($iconData.Count) icons, $Cell x $Cell)"
+foreach ($icon in $iconData) { $glyphData.Add($icon) } # icons appear at the end of the preview
 
 # ------------------------------------------------------------------- preview
 if ($Preview -ne "") {

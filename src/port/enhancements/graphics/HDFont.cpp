@@ -10,8 +10,12 @@
 // for, so text colour, shadow and fade passes behave exactly as before.
 //
 // File layout (little endian):
-//   char magic[4] = "PBHF"; u16 version = 1; u16 cell; u16 count; u16 reserved;
-//   u8 present[count]; then cell*cell index bytes for every present glyph.
+//   char magic[4] = "PBHF"; u16 version; u16 cell; u16 count; u16 iconCount;
+//   u8 present[count]; cell*cell index bytes for every present glyph;
+//   (version 2) cell*cell index bytes for every Switch button icon (HdIcon order).
+//
+// On Switch the N64 button glyphs in text (A, B, L, R, Z, C, Start) are drawn
+// as the Switch control currently bound to that N64 button.
 
 #include <cstring>
 #include <memory>
@@ -20,6 +24,11 @@
 
 #include <libultraship/libultraship.h>
 #include "port/ui/cvar_prefixes.h"
+#ifdef __SWITCH__
+#include <SDL2/SDL.h>
+#include "ship/controller/controldevice/controller/mapping/sdl/SDLAxisDirectionToButtonMapping.h"
+#include "ship/controller/controldevice/controller/mapping/sdl/SDLButtonToButtonMapping.h"
+#endif
 
 #include "common.h"
 #include "port/patches/Patches.h"
@@ -31,13 +40,42 @@ void* GameEngine_GetDataExact(const char* name);
 
 namespace {
 
-constexpr int kVersion = 1;
+constexpr int kMinVersion = 1;
+constexpr int kMaxVersion = 2;
+
+// Must match $iconNames in tools/switch/gen_hd_font.ps1.
+enum HdIcon {
+    ICON_A,
+    ICON_B,
+    ICON_X,
+    ICON_Y,
+    ICON_L,
+    ICON_R,
+    ICON_ZL,
+    ICON_ZR,
+    ICON_PLUS,
+    ICON_MINUS,
+    ICON_RS_UP,
+    ICON_RS_DOWN,
+    ICON_RS_LEFT,
+    ICON_RS_RIGHT,
+    ICON_LS_UP,
+    ICON_LS_DOWN,
+    ICON_LS_LEFT,
+    ICON_LS_RIGHT,
+    ICON_DPAD_UP,
+    ICON_DPAD_DOWN,
+    ICON_DPAD_LEFT,
+    ICON_DPAD_RIGHT,
+    ICON_COUNT,
+};
 
 struct HDFontData {
     bool loaded = false;
     bool valid = false;
     int cell = 0;
     std::vector<const uint8_t*> glyphs; // nullptr where the game glyph is kept
+    std::vector<const uint8_t*> icons;  // HdIcon order
     std::shared_ptr<Ship::File> file;
 };
 
@@ -58,7 +96,8 @@ void LoadFont() {
     const auto* data = reinterpret_cast<const uint8_t*>(sFont.file->Buffer->data());
     const size_t size = sFont.file->Buffer->size();
     auto u16 = [&](size_t offset) { return (uint16_t)(data[offset] | (data[offset + 1] << 8)); };
-    if (memcmp(data, "PBHF", 4) != 0 || u16(4) != kVersion) {
+    const int version = u16(4);
+    if (memcmp(data, "PBHF", 4) != 0 || version < kMinVersion || version > kMaxVersion) {
         SPDLOG_WARN("HD font: bad header");
         return;
     }
@@ -82,8 +121,13 @@ void LoadFont() {
         sFont.glyphs[i] = data + offset;
         offset += (size_t)cell * cell;
     }
+    const int iconCount = version >= 2 ? u16(10) : 0;
+    for (int i = 0; i < iconCount && offset + (size_t)cell * cell <= size; i++) {
+        sFont.icons.push_back(data + offset);
+        offset += (size_t)cell * cell;
+    }
     sFont.valid = true;
-    SPDLOG_INFO("HD font: {} glyphs at {}x{}", count, cell, cell);
+    SPDLOG_INFO("HD font: {} glyphs, {} icons at {}x{}", count, sFont.icons.size(), cell, cell);
 }
 
 // RGBA5551 big-endian -> RGBA8888 (as the renderer reads RGBA32 texels: R,G,B,A bytes).
@@ -98,34 +142,92 @@ uint32_t ConvertColor(uint16_t c) {
     return out;
 }
 
-} // namespace
-
-extern "C" int port_msg_text_filter_is_sharp(void) {
-    return CVarGetInteger(CVAR_DIALOGUE_TEXT_FILTER, DIALOGUE_TEXT_FILTER_DEFAULT) != 0;
+#ifdef __SWITCH__
+// Rank of a physical input for showing as "the" button for an N64 input:
+// face buttons first, then bumpers, triggers, +/-, D-pad, sticks.
+int ButtonIcon(SDL_GameControllerButton button, int* rank) {
+    switch (button) {
+        case SDL_CONTROLLER_BUTTON_A: *rank = 0; return ICON_A;
+        case SDL_CONTROLLER_BUTTON_B: *rank = 0; return ICON_B;
+        case SDL_CONTROLLER_BUTTON_X: *rank = 0; return ICON_X;
+        case SDL_CONTROLLER_BUTTON_Y: *rank = 0; return ICON_Y;
+        case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: *rank = 1; return ICON_L;
+        case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: *rank = 1; return ICON_R;
+        case SDL_CONTROLLER_BUTTON_START: *rank = 3; return ICON_PLUS;
+        case SDL_CONTROLLER_BUTTON_BACK: *rank = 3; return ICON_MINUS;
+        case SDL_CONTROLLER_BUTTON_DPAD_UP: *rank = 4; return ICON_DPAD_UP;
+        case SDL_CONTROLLER_BUTTON_DPAD_DOWN: *rank = 4; return ICON_DPAD_DOWN;
+        case SDL_CONTROLLER_BUTTON_DPAD_LEFT: *rank = 4; return ICON_DPAD_LEFT;
+        case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: *rank = 4; return ICON_DPAD_RIGHT;
+        default: return -1;
+    }
 }
 
-extern "C" int port_msg_hd_font_cell(void) {
-    return sFont.valid ? sFont.cell : 0;
+int AxisIcon(SDL_GameControllerAxis axis, Ship::AxisDirection direction, int* rank) {
+    const bool positive = direction == Ship::POSITIVE;
+    switch (axis) {
+        case SDL_CONTROLLER_AXIS_TRIGGERLEFT: *rank = 2; return ICON_ZL;
+        case SDL_CONTROLLER_AXIS_TRIGGERRIGHT: *rank = 2; return ICON_ZR;
+        case SDL_CONTROLLER_AXIS_RIGHTX: *rank = 5; return positive ? ICON_RS_RIGHT : ICON_RS_LEFT;
+        case SDL_CONTROLLER_AXIS_RIGHTY: *rank = 5; return positive ? ICON_RS_DOWN : ICON_RS_UP;
+        case SDL_CONTROLLER_AXIS_LEFTX: *rank = 6; return positive ? ICON_LS_RIGHT : ICON_LS_LEFT;
+        case SDL_CONTROLLER_AXIS_LEFTY: *rank = 6; return positive ? ICON_LS_DOWN : ICON_LS_UP;
+        default: return -1;
+    }
 }
 
-// Returns the RGBA32 cell*cell replacement for a standard-font glyph drawn
-// with the given palette, or nullptr to draw the game's own glyph.
-extern "C" IMG_PTR port_msg_hd_glyph(s32 charIndex, s32 palette) {
-    if (!CVarGetInteger(CVAR_HD_DIALOGUE_FONT, HD_DIALOGUE_FONT_DEFAULT)) {
-        return nullptr;
+// The Switch control bound to an N64 button on port 1, or -1 (keep the N64 glyph).
+int IconForN64Button(CONTROLLERBUTTONS_T bitmask) {
+    auto deck = Ship::Context::GetRawInstance()->GetControlDeck();
+    if (deck == nullptr) {
+        return -1;
     }
-    if (!sFont.loaded) {
-        LoadFont();
+    auto controller = deck->GetControllerByPort(0);
+    if (controller == nullptr) {
+        return -1;
     }
-    if (!sFont.valid || charIndex < 0 || charIndex >= (s32)sFont.glyphs.size() || palette < 0 || palette >= 80) {
-        return nullptr;
+    auto button = controller->GetButton(bitmask);
+    if (button == nullptr) {
+        return -1;
     }
-    const uint8_t* indices = sFont.glyphs[charIndex];
-    if (indices == nullptr) {
-        return nullptr;
+    int best = -1;
+    int bestRank = 1000;
+    for (auto& [id, mapping] : button->GetAllButtonMappings()) {
+        int rank = 1000;
+        int icon = -1;
+        if (auto sdlButton = std::dynamic_pointer_cast<Ship::SDLButtonToButtonMapping>(mapping)) {
+            icon = ButtonIcon(sdlButton->GetSDLControllerButton(), &rank);
+        } else if (auto sdlAxis = std::dynamic_pointer_cast<Ship::SDLAxisDirectionToButtonMapping>(mapping)) {
+            icon = AxisIcon(sdlAxis->GetSDLControllerAxis(), sdlAxis->GetSDLAxisDirection(), &rank);
+        }
+        if (icon >= 0 && rank < bestRank) {
+            best = icon;
+            bestRank = rank;
+        }
     }
+    return best;
+}
 
-    const uint32_t key = ((uint32_t)palette << 16) | (uint32_t)charIndex;
+// MSG_CHAR_BUTTON_* (US) -> N64 button.
+bool N64ButtonForChar(s32 charIndex, CONTROLLERBUTTONS_T* bitmask) {
+    switch (charIndex) {
+        case MSG_CHAR_BUTTON_A: *bitmask = BTN_A; return true;
+        case MSG_CHAR_BUTTON_B: *bitmask = BTN_B; return true;
+        case MSG_CHAR_BUTTON_L: *bitmask = BTN_L; return true;
+        case MSG_CHAR_BUTTON_R: *bitmask = BTN_R; return true;
+        case MSG_CHAR_BUTTON_Z: *bitmask = BTN_Z; return true;
+        case MSG_CHAR_BUTTON_C_UP: *bitmask = BTN_CUP; return true;
+        case MSG_CHAR_BUTTON_C_DOWN: *bitmask = BTN_CDOWN; return true;
+        case MSG_CHAR_BUTTON_C_LEFT: *bitmask = BTN_CLEFT; return true;
+        case MSG_CHAR_BUTTON_C_RIGHT: *bitmask = BTN_CRIGHT; return true;
+        case MSG_CHAR_BUTTON_START: *bitmask = BTN_START; return true;
+        default: return false;
+    }
+}
+#endif
+
+// Expands an index map through palette `palette`, cached under `key`.
+IMG_PTR Expand(uint32_t key, const uint8_t* indices, s32 palette) {
     auto it = sExpanded.find(key);
     if (it != sExpanded.end()) {
         return reinterpret_cast<IMG_PTR>(it->second.get());
@@ -150,4 +252,45 @@ extern "C" IMG_PTR port_msg_hd_glyph(s32 charIndex, s32 palette) {
     IMG_PTR result = reinterpret_cast<IMG_PTR>(buffer.get());
     sExpanded.emplace(key, std::move(buffer));
     return result;
+}
+
+} // namespace
+
+extern "C" int port_msg_text_filter_is_sharp(void) {
+    return CVarGetInteger(CVAR_DIALOGUE_TEXT_FILTER, DIALOGUE_TEXT_FILTER_DEFAULT) != 0;
+}
+
+extern "C" int port_msg_hd_font_cell(void) {
+    return sFont.valid ? sFont.cell : 0;
+}
+
+// Returns the RGBA32 cell*cell replacement for a standard-font glyph drawn
+// with the given palette, or nullptr to draw the game's own glyph.
+extern "C" IMG_PTR port_msg_hd_glyph(s32 charIndex, s32 palette) {
+    if (!CVarGetInteger(CVAR_HD_DIALOGUE_FONT, HD_DIALOGUE_FONT_DEFAULT)) {
+        return nullptr;
+    }
+    if (!sFont.loaded) {
+        LoadFont();
+    }
+    if (!sFont.valid || charIndex < 0 || charIndex >= (s32)sFont.glyphs.size() || palette < 0 || palette >= 80) {
+        return nullptr;
+    }
+#ifdef __SWITCH__
+    // Button glyphs: the Switch control bound to that N64 button right now.
+    CONTROLLERBUTTONS_T n64Button;
+    if (N64ButtonForChar(charIndex, &n64Button)) {
+        const int icon = IconForN64Button(n64Button);
+        if (icon >= 0 && icon < (int)sFont.icons.size()) {
+            return Expand(((uint32_t)palette << 16) | 0x8000u | (uint32_t)icon, sFont.icons[icon], palette);
+        }
+        return nullptr;
+    }
+#endif
+
+    const uint8_t* indices = sFont.glyphs[charIndex];
+    if (indices == nullptr) {
+        return nullptr;
+    }
+    return Expand(((uint32_t)palette << 16) | (uint32_t)charIndex, indices, palette);
 }

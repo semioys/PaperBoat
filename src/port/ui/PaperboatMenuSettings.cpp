@@ -686,7 +686,8 @@ void PaperboatMenu::AddMenuSettingsSwitch() {
         .CVar(CVAR_SETTING("Switch.Rumble.Enabled"))
         .RaceDisable(false)
         .Options(CheckboxOptions().DefaultValue(true).Tooltip(
-            "Short pulses for successful action commands, jump attacks and damage to Mario. The game's "
+            "Short pulses for successful action commands, jump and hammer attacks, damage to Mario, "
+            "hammer hits in the field, coins, Star Points, Star Pieces and HP/FP recovery. The game's "
             "own rumble is set per controller under Controls."));
     AddWidget(path, "Rumble strength: %.0f%%", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_SETTING("Switch.Rumble.Strength"))

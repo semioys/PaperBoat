@@ -264,6 +264,8 @@ HitResult calc_player_damage_enemy(void) {
 
     if (battleStatus->curAttackElement & DAMAGE_TYPE_JUMP) {
         Paperboat_Haptic(PB_HAPTIC_STOMP);
+    } else if (battleStatus->curAttackElement & DAMAGE_TYPE_SMASH) {
+        Paperboat_Haptic(PB_HAPTIC_HAMMER_BATTLE);
     }
 
     canBeShocked = false;

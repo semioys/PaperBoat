@@ -29,6 +29,30 @@ extern "C" void Paperboat_Haptic(int type) {
         case PB_HAPTIC_STOMP:
             Ship::Switch::PlayHaptic(0.45f * strength, 170.0f, 0.35f * strength, 300.0f, 45);
             break;
+        case PB_HAPTIC_HAMMER_BATTLE:
+            // Heavier and brighter than a stomp: a metallic clank.
+            Ship::Switch::PlayHaptic(0.65f * strength, 160.0f, 0.60f * strength, 330.0f, 70);
+            break;
+        case PB_HAPTIC_HAMMER_FIELD:
+            Ship::Switch::PlayHaptic(0.45f * strength, 180.0f, 0.55f * strength, 340.0f, 55);
+            break;
+        case PB_HAPTIC_COIN:
+            // A light tick; counting many coins becomes a gentle patter.
+            Ship::Switch::PlayHaptic(0.04f * strength, 160.0f, 0.22f * strength, 380.0f, 22);
+            break;
+        case PB_HAPTIC_STAR_POINT:
+            Ship::Switch::PlayHaptic(0.03f * strength, 160.0f, 0.16f * strength, 420.0f, 18);
+            break;
+        case PB_HAPTIC_STAR_PIECE:
+            Ship::Switch::PlayHaptic(0.10f * strength, 180.0f, 0.40f * strength, 400.0f, 45);
+            break;
+        case PB_HAPTIC_RECOVER_HP:
+            // Soft and warm: mostly low band, a little longer.
+            Ship::Switch::PlayHaptic(0.35f * strength, 120.0f, 0.12f * strength, 240.0f, 90);
+            break;
+        case PB_HAPTIC_RECOVER_FP:
+            Ship::Switch::PlayHaptic(0.25f * strength, 130.0f, 0.20f * strength, 280.0f, 80);
+            break;
         default:
             break;
     }
