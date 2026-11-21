@@ -80,7 +80,12 @@ using json = nlohmann::json;
 const float imguiScaleOptionToValue[4] = { 0.75f, 1.0f, 1.5f, 2.0f };
 std::shared_ptr<Fast::Fast3dWindow> gsFast3dWindow;
 Ship::Context* gShipContext = nullptr;
+#ifdef __SWITCH__
+// 1.5x: readable on the 720p handheld screen and on a TV at couch distance.
+const uint32_t defaultImGuiScale = 2;
+#else
 const uint32_t defaultImGuiScale = 1;
+#endif
 int32_t previousImGuiScaleIndex = -1;
 float previousImGuiScale = defaultImGuiScale;
 
@@ -327,8 +332,17 @@ bool GameEngine::GenAssetFile(bool exitOnFail) {
 ImFont* GameEngine::CreateFontWithSize(float size, std::string fontPath) {
     auto mImGuiIo = &ImGui::GetIO();
     ImFont* font;
+    // Match the engine's glyph density (above 1 on Switch, see Fast3dGui::ComputeDpiScale)
+    // so the UI scale setting enlarges crisp glyphs.
+    float rasterizerDensity = 1.0f;
+    if (auto window = Ship::Context::GetRawInstance()->GetWindow()) {
+        if (auto gui = window->GetGui()) {
+            rasterizerDensity = gui->GetDpiScale();
+        }
+    }
     if (fontPath == "") {
         ImFontConfig fontCfg = ImFontConfig();
+        fontCfg.RasterizerDensity = rasterizerDensity;
         fontCfg.OversampleH = fontCfg.OversampleV = 1;
         fontCfg.PixelSnapH = true;
         fontCfg.SizePixels = size;
@@ -337,6 +351,7 @@ ImFont* GameEngine::CreateFontWithSize(float size, std::string fontPath) {
         auto initData = std::make_shared<Ship::ResourceInitData>();
         ImFontConfig config;
         config.FontDataOwnedByAtlas = false;
+        config.RasterizerDensity = rasterizerDensity;
 
         initData->Format = RESOURCE_FORMAT_BINARY;
         initData->Type = static_cast<uint32_t>(RESOURCE_TYPE_FONT);
@@ -355,6 +370,7 @@ ImFont* GameEngine::CreateFontWithSize(float size, std::string fontPath) {
     iconsConfig.MergeMode = true;
     iconsConfig.PixelSnapH = true;
     iconsConfig.GlyphMinAdvanceX = iconFontSize;
+    iconsConfig.RasterizerDensity = rasterizerDensity;
     mImGuiIo->Fonts->AddFontFromMemoryCompressedBase85TTF(
         fontawesome_compressed_data_base85, iconFontSize, &iconsConfig, sIconsRanges
     );
