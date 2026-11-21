@@ -177,7 +177,12 @@ void UpdateModFiles(bool init, bool reset) {
                 continue;
             }
             SPDLOG_INFO("Loading mod archive: {}", it->second.generic_string());
+#ifdef __SWITCH__
+            // Mod paths are already sdmc:/...; absolute() would prefix the cwd to them.
+            GetArchiveManager()->AddArchive(std::filesystem::path(it->second).generic_string());
+#else
             GetArchiveManager()->AddArchive(std::filesystem::absolute(it->second).generic_string());
+#endif
         }
     }
 
