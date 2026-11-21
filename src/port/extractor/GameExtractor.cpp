@@ -322,11 +322,11 @@ bool GameExtractor::GenerateOTRTo(
                 std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)
                     .count() /
                 1000.0;
-            SPDLOG_INFO("[switch] extraction finished in {:.1f} s", secs);
+            Ship::Switch::Diag("extraction finished in %.1f s", secs);
             Ship::Switch::LogMemoryUsage("after extraction");
         }
     } extractReport { extractStart };
-    SPDLOG_INFO("[switch] extracting: assets='{}' output='{}'", assetsPath, gamePath);
+    Ship::Switch::Diag("extracting: assets='%s' output='%s'", assetsPath.c_str(), gamePath.c_str());
 #endif
 
     sLastError.clear();
