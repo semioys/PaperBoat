@@ -22,7 +22,11 @@ param(
     [string]$Output = "port/fonts/hd_standard.bin",
     [string]$Preview = "",
     [float]$Embolden = 3.0,
-    [int]$HaloRadius = 3
+    [int]$HaloRadius = 3,
+    # Horizontal scale applied to every glyph (Montserrat is wide for the game's widths).
+    [float]$Condense = 0.84,
+    # HD texels a glyph may extend into the inter-letter gap (4 = one game pixel).
+    [int]$Overflow = 2
 )
 
 $ErrorActionPreference = "Stop"
@@ -101,14 +105,25 @@ $pen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
 function Get-Coverage([string]$text, [int]$advance) {
     $path = New-GlyphPath $text $em
     $bounds = $path.GetBounds()
-    $inkLeft = $bounds.Left - $Embolden / 2
-    $inkWidth = $bounds.Width + $Embolden
-    $avail = [Math]::Max(4, $advance * $Scale - 2 * $Scale)
-    $sx = 1.0
-    if ($inkWidth -gt $avail) { $sx = $avail / $inkWidth }
+    # Montserrat is wider than the game's advance widths. Condense the whole
+    # font by the same factor (keeps letters in proportion to each other) and
+    # only squeeze further what still doesn't fit. The emboldening stroke is
+    # added after scaling, so stems keep the same thickness on every glyph.
+    $avail = [Math]::Max(4, $advance * $Scale - 2 * $Scale + $Overflow)
+    $sx = $Condense
+    if ($bounds.Width * $sx + $Embolden -gt $avail) {
+        # Very wide letters (m, w, W, @) may take another half pixel of the gap
+        # rather than being squeezed out of proportion.
+        $avail += 2
+        $sx = [Math]::Min($Condense, [Math]::Max(0.3, ($avail - $Embolden) / $bounds.Width))
+    }
+    $inkLeft = $bounds.Left
+    if ($env:HDFONT_REPORT) {
+        Write-Host ("{0} adv={1} avail={2} sx={3:N2} rel={4:N2}" -f $text, $advance, $avail, $sx, ($sx / $Condense))
+    }
 
     $matrix = New-Object System.Drawing.Drawing2D.Matrix
-    $matrix.Translate($LeftBearing, $originY)
+    $matrix.Translate($LeftBearing + $Embolden / 2, $originY)
     $matrix.Scale($sx, 1.0)
     $matrix.Translate(-$inkLeft, 0)
     $path.Transform($matrix)
