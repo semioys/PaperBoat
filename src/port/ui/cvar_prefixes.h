@@ -29,3 +29,11 @@
 #else
 #define DIALOGUE_TEXT_FILTER_DEFAULT 0
 #endif
+
+// HD replacement glyphs for the dialogue font (on by default on Switch).
+#define CVAR_HD_DIALOGUE_FONT CVAR_SETTING("HDDialogueFont")
+#ifdef __SWITCH__
+#define HD_DIALOGUE_FONT_DEFAULT 1
+#else
+#define HD_DIALOGUE_FONT_DEFAULT 0
+#endif

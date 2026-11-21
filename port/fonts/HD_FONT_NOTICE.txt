@@ -1,0 +1,13 @@
+hd_standard.bin - HD dialogue font for PaperBoat
+
+The glyphs in hd_standard.bin are rendered from Montserrat
+(Montserrat-Regular.ttf in this folder) by tools/switch/gen_hd_font.ps1,
+emboldened and fitted to the game's character widths. No glyph art from the
+original game is used.
+
+Montserrat: Copyright 2011 The Montserrat Project Authors
+(https://github.com/JulietaUla/Montserrat)
+
+Montserrat is licensed under the SIL Open Font License, Version 1.1.
+The license text is available at https://openfontlicense.org/open-font-license-official-text/
+hd_standard.bin is distributed under the same license.

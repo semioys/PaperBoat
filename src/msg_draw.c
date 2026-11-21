@@ -32,6 +32,7 @@ extern s16 MsgStyleVerticalLineOffsets[];
 #endif
 
 extern MessageCharset* MsgCharsets[5];
+extern IMG_BIN MsgCharImgNormal[];
 extern PAL_BIN D_802F4560[80][8];
 extern IMG_BIN* gMessageBoxFrameParts[2][16];
 
@@ -1717,6 +1718,29 @@ void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 
         drawState->printModeFlags &= ~(MSG_PRINT_FLAG_10 | MSG_PRINT_FLAG_1);
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, port_msg_glyph_palette(D_802F4560[palette]));
     }
+
+#if !VERSION_IQUE
+    // HD dialogue font: a cell*cell RGBA32 glyph expanded through the same
+    // palette, drawn over the same rectangle with the texture step scaled down.
+    if (messageCharset->rasters[fontVariant].raster == MsgCharImgNormal) {
+        IMG_PTR hdGlyph = port_msg_hd_glyph(charIndex, palette);
+        if (hdGlyph != NULL) {
+            s32 cell = port_msg_hd_font_cell();
+            s32 scale = cell / messageCharset->texSize.x;
+
+            gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
+            gDPLoadTextureTile(gMainGfxPos++, hdGlyph, G_IM_FMT_RGBA, G_IM_SIZ_32b, cell, cell, 0, 0, cell - 1,
+                               cell - 1, 0, G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD,
+                               G_TX_NOLOD);
+            gSPWideTextureRectangle(gMainGfxPos++, ulx * 4, uly * 4, lrx * 4, lry * 4, G_TX_RENDERTILE,
+                                    texOffsetX * scale, texOffsetY * scale, dsdx * scale, dtdy * scale);
+            if (port_msg_text_filter_is_sharp()) {
+                gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+            }
+            return;
+        }
+    }
+#endif
 
     if (messageCharset->texSize.x >= 16 && messageCharset->texSize.x % 16 == 0) {
 #if VERSION_IQUE

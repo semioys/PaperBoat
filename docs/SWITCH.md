@@ -80,6 +80,13 @@ an earlier build, use **Settings → Controls → Clear Devices** (or delete
   Controls.
 - **Exit to Homebrew Menu**.
 
+**HD dialogue font** (Settings → Graphics → HD Dialogue Font, on by default on
+Switch): dialogue text is drawn from 64×64 glyphs rendered from the OFL font
+Montserrat, in the game's own text colours; button icons and symbols keep the
+original art. Regenerate `port/fonts/hd_standard.bin` on Windows with
+`powershell -ExecutionPolicy Bypass -File tools/switch/gen_hd_font.ps1`
+(see `port/fonts/HD_FONT_NOTICE.txt`).
+
 Widescreen is 16:9 by default. For 4:3 with pillarboxes use
 **Settings → Graphics → Advanced Resolution** and the 4:3 aspect preset.
 

@@ -483,6 +483,13 @@ void PaperboatMenu::AddMenuSettings() {
                 .ComboMap(texture2DFilteringMap)
                 .DefaultIndex(DIALOGUE_TEXT_FILTER_DEFAULT)
         );
+    AddWidget(path, "HD Dialogue Font", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_HD_DIALOGUE_FONT)
+        .RaceDisable(false)
+        .Options(CheckboxOptions()
+                     .DefaultValue(HD_DIALOGUE_FONT_DEFAULT)
+                     .Tooltip("Replaces the dialogue font with high-resolution glyphs (4x) in the same "
+                              "colours. Button icons and symbols keep the original art."));
 
     path.column = SECTION_COLUMN_2;
     AddWidget(path, "Advanced Graphics Options", WIDGET_SEPARATOR_TEXT);

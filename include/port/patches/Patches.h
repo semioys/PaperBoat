@@ -58,6 +58,11 @@ void port_msg_font_loaded(s32 font);
 IMG_PTR port_msg_glyph_raster(IMG_PTR glyph);
 PAL_PTR port_msg_glyph_palette(PAL_PTR palette);
 
+// HD dialogue font (enhancements/graphics/HDFont.cpp)
+IMG_PTR port_msg_hd_glyph(s32 charIndex, s32 palette);
+int port_msg_hd_font_cell(void);
+int port_msg_text_filter_is_sharp(void);
+
 // Background (BackgroundPatches.c)
 extern char* gBgPalettePath;
 void port_load_map_bg(char* optAssetName);
