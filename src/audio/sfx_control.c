@@ -1,4 +1,5 @@
 #include "common.h"
+#include "port/switch/haptics.h"
 #include "audio/audio.h"
 
 #define MAX_SOUND_INSTANCES 10
@@ -460,6 +461,8 @@ void sfx_play_sound_with_params(s32 soundID, u8 volume, u8 pan, s16 pitchShift) 
     if (gGameStatusPtr->demoState) {
         return;
     }
+
+    Paperboat_SfxHaptic(soundID, volume);
 
     if (soundID & SOUND_ID_TYPE_FLAG) {
         s32 soundIndex = soundID & 0xFF;

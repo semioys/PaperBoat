@@ -689,6 +689,13 @@ void PaperboatMenu::AddMenuSettingsSwitch() {
             "Short pulses for successful action commands, jump and hammer attacks, damage to Mario, "
             "hammer hits in the field, coins, Star Points, Star Pieces and HP/FP recovery. The game's "
             "own rumble is set per controller under Controls."));
+    AddWidget(path, "Rumble for world effects", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("Switch.Rumble.WorldEffects"))
+        .RaceDisable(false)
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Vibration for everything that makes a physical sound: bumping blocks, hammer hits, "
+            "explosions, breaking things, doors and chests, springs, heavy landings, shocks, "
+            "pickups and more. Far away events are felt weaker."));
     AddWidget(path, "Rumble strength: %.0f%%", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_SETTING("Switch.Rumble.Strength"))
         .RaceDisable(false)
