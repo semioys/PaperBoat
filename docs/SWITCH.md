@@ -136,9 +136,10 @@ aarch64-none-elf-addr2line -f -C -e build-switch/Paperboat.elf 0x<offset>
 - Shaders compile on first use (Mesa here has no program binary support).
   Variants seen before (plus a shipped starter list) are compiled at startup
   behind a progress bar (about 2 s with CPU boost). Variants never seen before
-  are compiled on a background core (Settings → Switch → Background shader
-  compilation): the object that needs one appears a few frames late instead
-  of the game freezing. The driver may still do a little work on first draw.
+  compile on first use (a short hitch once). Settings → Switch → Background
+  shader compilation (experimental, off by default) moves that to another core,
+  but on hardware it can corrupt graphics and hang the game: the GPU driver
+  does not cope with two contexts working at once.
 - First asset generation keeps the extractor's memory until the game exits.
 - Single sideways Joy-Con and docked 60 FPS are untested.
 

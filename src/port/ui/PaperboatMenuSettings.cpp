@@ -673,13 +673,13 @@ void PaperboatMenu::AddMenuSettingsSwitch() {
                      .Tooltip("60 FPS interpolates between the game's 30 FPS frames. Costs CPU: if it "
                               "stutters, go back to 30."));
 
-    AddWidget(path, "Background shader compilation", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "Background shader compilation (experimental)", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_SETTING("Switch.AsyncShaders"))
         .RaceDisable(false)
-        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
-            "Compiles shaders the game has never used before on a separate CPU core. Instead of a "
-            "short freeze, the affected object appears a few frames late. Turn off if you see "
-            "graphical glitches."));
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "EXPERIMENTAL - can corrupt graphics and hang the game (GPU driver limitation).\n"
+            "Compiles shaders the game has never used before on a separate CPU core, so the "
+            "affected object appears a few frames late instead of a short freeze."));
 
     AddWidget(path, "HD Rumble", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Enable HD Rumble cues", WIDGET_CVAR_CHECKBOX)
