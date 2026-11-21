@@ -7,6 +7,9 @@
 #include "nlohmann/json.hpp"
 #include "port/build.h"
 #include "port/enhancements/PortEnhancements.h"
+#ifdef __SWITCH__
+#include "ship/port/switch/SwitchImpl.h"
+#endif
 #include "port/interpolation/FrameInterpolation.h"
 #include "port/ui/cvar_prefixes.h"
 #include "port/audio/AudioVolume.h"
@@ -432,6 +435,19 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
             }
         );
     }
+
+#ifdef __SWITCH__
+    if (Ship::Switch::IsAppletMode()) {
+        PaperboatGui::RegisterPopup(
+            "Applet mode",
+            "PaperBoat was started from the Album (applet mode), which has far less\n"
+            "memory. The game may crash or fail to generate its files.\n\n"
+            "Launch it from the HOME menu instead: hold R while starting any game\n"
+            "(title override) to open the Homebrew Menu.",
+            "Continue anyway", ""
+        );
+    }
+#endif
 
     std::shared_ptr<BS::thread_pool> threadPool = std::make_shared<BS::thread_pool>(1);
 
