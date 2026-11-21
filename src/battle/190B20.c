@@ -1,4 +1,5 @@
 #include "common.h"
+#include "port/switch/haptics.h"
 #include "nu/nusys.h"
 #include "effects.h"
 #include "battle/battle.h"
@@ -2102,6 +2103,10 @@ void show_action_rating(s32 rating, Actor* actor, f32 x, f32 y, f32 z) {
 
     actor->attackResultEffect = actor->attackResultEffect; // TODO required to match
     player = battleStatus->playerActor;
+
+    if (rating != ACTION_RATING_MISS) {
+        Paperboat_Haptic(rating == ACTION_RATING_SUPER ? PB_HAPTIC_ACTION_SUPER : PB_HAPTIC_ACTION_NICE);
+    }
 
     if (actor->attackResultEffect == nullptr) {
         type = 0;

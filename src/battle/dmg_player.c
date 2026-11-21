@@ -1,4 +1,5 @@
 #include "common.h"
+#include "port/switch/haptics.h"
 #include "effects.h"
 #include "battle/battle.h"
 #include "script_api/battle.h"
@@ -260,6 +261,10 @@ HitResult calc_player_damage_enemy(void) {
     s32 wasSpecialHit;
     s32 wasStatusInflicted;
     s32 attackFxType;
+
+    if (battleStatus->curAttackElement & DAMAGE_TYPE_JUMP) {
+        Paperboat_Haptic(PB_HAPTIC_STOMP);
+    }
 
     canBeShocked = false;
     isFireDamage = false;
@@ -1064,6 +1069,9 @@ b32 dispatch_damage_event_player(s32 damageAmount, s32 event, b32 noHitSound) {
 
     CALL_EVENT(OnPlayerDamageReceived, &damageAmount);
     battleStatus->curAttackDamage = damageAmount;
+    if (damageAmount > 0) {
+        Paperboat_Haptic(PB_HAPTIC_PLAYER_HIT);
+    }
 
     temp = (s16)damageAmount; //TODO usage of temp here required to match
     player->hpChangeCounter += temp;

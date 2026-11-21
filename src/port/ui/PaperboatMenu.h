@@ -20,6 +20,9 @@ class PaperboatMenu : public Ship::Menu {
     void AddSidebarEntry(std::string sectionName, std::string sidbarName, uint32_t columnCount);
     WidgetInfo& AddWidget(WidgetPath& pathInfo, std::string widgetName, WidgetType widgetType);
     void AddMenuSettings();
+#ifdef __SWITCH__
+    void AddMenuSettingsSwitch();
+#endif
     void AddMenuEnhancements();
     void AddMenuShaderSettings();
     void AddMenuDevTools();

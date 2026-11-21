@@ -1,6 +1,10 @@
 #include "Notification.h"
 #include "PaperboatInputEditorWindow.h"
 #include "PaperboatMenu.h"
+#ifdef __SWITCH__
+#include "port/switch/haptics.h"
+#include "ship/port/switch/SwitchImpl.h"
+#endif
 #include "PaperboatModals.h"
 #include "TouchControls.h"
 #include "UIWidgets.hpp"
@@ -213,6 +217,10 @@ void PaperboatMenu::AddMenuSettings() {
         );
 
     // Settings > Audio
+#ifdef __SWITCH__
+    AddMenuSettingsSwitch();
+#endif
+
     path.sidebarName = "Audio";
     path.column = SECTION_COLUMN_1;
     AddSidebarEntry("Settings", "Audio", 3);
@@ -569,5 +577,122 @@ void PaperboatMenu::AddMenuSettings() {
         .HideInSearch(true)
         .Options(WindowButtonOptions().Tooltip("Enables the separate Mod Menu Window."));
 }
+
+#ifdef __SWITCH__
+// Settings > Switch: everything specific to the console in one place.
+static const std::unordered_map<int32_t, const char*> switchPresetOptions = {
+    { 0, "Custom" },
+    { 1, "Quality (100% / 100%)" },
+    { 2, "Balanced (100% / 75%)" },
+    { 3, "Performance (75% / 60%)" },
+};
+
+static const std::unordered_map<int32_t, const char*> switchFpsOptions = {
+    { 30, "30 FPS (original)" },
+    { 60, "60 FPS (interpolated)" },
+};
+
+static void ApplySwitchPreset(int32_t preset) {
+    float handheld = 1.0f;
+    float docked = 1.0f;
+    switch (preset) {
+        case 1:
+            handheld = 1.0f;
+            docked = 1.0f;
+            break;
+        case 2:
+            handheld = 1.0f;
+            docked = 0.75f;
+            break;
+        case 3:
+            handheld = 0.75f;
+            docked = 0.6f;
+            break;
+        default:
+            return;
+    }
+    CVarSetFloat(CVAR_SETTING("Switch.HandheldScale"), handheld);
+    CVarSetFloat(CVAR_SETTING("Switch.DockedScale"), docked);
+    CVarSetInteger(CVAR_SETTING("InterpolationFPS"), 30);
+    Ship::Context::GetRawInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+}
+
+void PaperboatMenu::AddMenuSettingsSwitch() {
+    AddSidebarEntry("Settings", "Switch", 2);
+    WidgetPath path = { "Settings", "Switch", SECTION_COLUMN_1 };
+
+    AddWidget(path, "Performance", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Preset", WIDGET_CVAR_COMBOBOX)
+        .CVar(CVAR_SETTING("Switch.Preset"))
+        .RaceDisable(false)
+        .Callback([](WidgetInfo& info) { ApplySwitchPreset(CVarGetInteger(CVAR_SETTING("Switch.Preset"), 0)); })
+        .Options(ComboboxOptions()
+                     .ComboMap(switchPresetOptions)
+                     .DefaultIndex(0)
+                     .Tooltip("Sets the render scale for handheld / docked at once. Moving a slider below "
+                              "switches back to Custom."));
+    AddWidget(path, "Handheld render scale: %.0f%%", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("Switch.HandheldScale"))
+        .RaceDisable(false)
+        .Callback([](WidgetInfo& info) { CVarSetInteger(CVAR_SETTING("Switch.Preset"), 0); })
+        .Options(FloatSliderOptions()
+                     .Min(0.5f)
+                     .Max(1.0f)
+                     .Step(0.05f)
+                     .DefaultValue(1.0f)
+                     .IsPercentage()
+                     .Tooltip("Internal resolution in handheld mode, relative to 1280x720. Lower is faster "
+                              "and blurrier."));
+    AddWidget(path, "Docked render scale: %.0f%%", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("Switch.DockedScale"))
+        .RaceDisable(false)
+        .Callback([](WidgetInfo& info) { CVarSetInteger(CVAR_SETTING("Switch.Preset"), 0); })
+        .Options(FloatSliderOptions()
+                     .Min(0.5f)
+                     .Max(1.0f)
+                     .Step(0.05f)
+                     .DefaultValue(1.0f)
+                     .IsPercentage()
+                     .Tooltip("Internal resolution when docked, relative to 1920x1080."));
+    AddWidget(path, "Frame rate", WIDGET_CVAR_COMBOBOX)
+        .CVar(CVAR_SETTING("InterpolationFPS"))
+        .RaceDisable(false)
+        .Options(ComboboxOptions()
+                     .ComboMap(switchFpsOptions)
+                     .DefaultIndex(30)
+                     .Tooltip("60 FPS interpolates between the game's 30 FPS frames. Costs CPU: if it "
+                              "stutters, go back to 30."));
+
+    AddWidget(path, "HD Rumble", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Enable HD Rumble cues", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("Switch.Rumble.Enabled"))
+        .RaceDisable(false)
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Short pulses for successful action commands, jump attacks and damage to Mario. The game's "
+            "own rumble is set per controller under Controls."));
+    AddWidget(path, "Rumble strength: %.0f%%", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar(CVAR_SETTING("Switch.Rumble.Strength"))
+        .RaceDisable(false)
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).Step(0.05f).DefaultValue(0.7f).IsPercentage());
+    AddWidget(path, "Test rumble", WIDGET_BUTTON)
+        .RaceDisable(false)
+        .Callback([](WidgetInfo& info) { Paperboat_Haptic(PB_HAPTIC_ACTION_SUPER); })
+        .Options(ButtonOptions().Tooltip("Plays the action command cue."));
+
+    path.column = SECTION_COLUMN_2;
+    AddWidget(path, "Controllers", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Controller setup", WIDGET_BUTTON)
+        .RaceDisable(false)
+        .Callback([](WidgetInfo& info) { Ship::Switch::ShowControllerApplet(); })
+        .Options(ButtonOptions().Tooltip(
+            "Opens the system controller screen: pair controllers, or use a single Joy-Con held sideways."));
+
+    AddWidget(path, "Application", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Exit to Homebrew Menu", WIDGET_BUTTON)
+        .RaceDisable(false)
+        .Callback([](WidgetInfo& info) { Ship::Context::GetRawInstance()->GetWindow()->Close(); })
+        .Options(ButtonOptions().Tooltip("Saves settings and quits PaperBoat."));
+}
+#endif
 
 } // namespace PaperboatGui
