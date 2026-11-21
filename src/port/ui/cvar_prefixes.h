@@ -22,3 +22,10 @@
 #define CVAR_TIME_DISPLAY(var) CVAR_PREFIX_TIME_DISPLAY "." var
 #define CVAR_2D_TEXTURE_FILTER CVAR_SETTING("2DTextureFilter")
 #define CVAR_DIALOGUE_TEXT_FILTER CVAR_SETTING("DialogueTextFilter")
+// Sharp (point-filtered) dialogue text by default on Switch: the bilinear-filtered
+// font is hard to read on the handheld screen and on TVs.
+#ifdef __SWITCH__
+#define DIALOGUE_TEXT_FILTER_DEFAULT 1
+#else
+#define DIALOGUE_TEXT_FILTER_DEFAULT 0
+#endif

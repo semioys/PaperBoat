@@ -11,7 +11,7 @@ void RegisterDialogueTextFilter_Init() {
     UNREGISTER_LISTENER(MessageTextFilterSet, sFilterSetListener);
     sFilterSetListener = -1;
 
-    if (!CVarGetInteger(CVAR_DIALOGUE_TEXT_FILTER, 0)) {
+    if (!CVarGetInteger(CVAR_DIALOGUE_TEXT_FILTER, DIALOGUE_TEXT_FILTER_DEFAULT)) {
         return;
     }
 

@@ -478,7 +478,10 @@ void PaperboatMenu::AddMenuSettings() {
         .CVar(CVAR_DIALOGUE_TEXT_FILTER)
         .RaceDisable(false)
         .Options(
-            ComboboxOptions().Tooltip("Sets texture filtering for dialogue text.").ComboMap(texture2DFilteringMap)
+            ComboboxOptions()
+                .Tooltip("Sets texture filtering for dialogue text.")
+                .ComboMap(texture2DFilteringMap)
+                .DefaultIndex(DIALOGUE_TEXT_FILTER_DEFAULT)
         );
 
     path.column = SECTION_COLUMN_2;
