@@ -17,8 +17,10 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/config.yml" "${PAPERBOAT_SWITCH_ROMFS}/config.yml"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets/" "${PAPERBOAT_SWITCH_ROMFS}/assets/"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PAPERBOAT_PORT_O2R}" "${PAPERBOAT_SWITCH_ROMFS}/paperboat.o2r"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/switch/shaders.list" "${PAPERBOAT_SWITCH_ROMFS}/shaders.list"
     COMMAND ${CMAKE_COMMAND} -E touch "${PAPERBOAT_SWITCH_ROMFS_STAMP}"
     DEPENDS "${CMAKE_SOURCE_DIR}/config.yml" ${PAPERBOAT_SWITCH_ROMFS_INPUTS} "${PAPERBOAT_PORT_O2R}"
+            "${CMAKE_SOURCE_DIR}/switch/shaders.list"
     VERBATIM
 )
 add_custom_target(PaperboatSwitchRomfs DEPENDS "${PAPERBOAT_SWITCH_ROMFS_STAMP}")

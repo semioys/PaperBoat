@@ -358,8 +358,17 @@ bool GameExtractor::GenerateOTRTo(
 
     sPhase = 3;
     sStatusText = "Cleaning up...";
+#ifdef __SWITCH__
+    // The archive is on disk now. Tearing down Torch's state frees a huge number
+    // of small allocations, which took over a minute on the console; leave it to
+    // be reclaimed when the app exits instead.
+    Ship::Switch::Diag("torch finished, skipping extractor teardown");
+    Ship::Switch::LogMemoryUsage("kept by extractor");
+    Companion::Instance = nullptr;
+#else
     delete Companion::Instance;
     Companion::Instance = nullptr;
+#endif
     sStatusText.clear();
     sPhase = 0;
     return true;
