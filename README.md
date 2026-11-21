@@ -7,6 +7,12 @@ Developers:
 * KiritoDv
 * Caladius
 
+## Nintendo Switch (homebrew fork)
+
+This fork adds an unofficial Nintendo Switch homebrew build (`.nro`). See
+[docs/SWITCH.md](docs/SWITCH.md) for requirements, installation, on-console
+asset generation, controls, building and known issues.
+
 ## Website & Discord
 Official Website: https://www.harbourmasters.org/
 

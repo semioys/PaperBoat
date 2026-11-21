@@ -1,0 +1,146 @@
+# PaperBoat for Nintendo Switch (homebrew)
+
+Unofficial homebrew build of PaperBoat for Nintendo Switch consoles running
+Atmosphère. It is a fork, not supported by Harbour Masters.
+
+**No game files are included.** You need your own dump of the US (NTSC-U)
+version of the game (`.z64`).
+
+## Requirements
+
+- Nintendo Switch (Erista/Mariko/Lite/OLED) with Atmosphère and the Homebrew Menu.
+- Launching in **title override** mode: hold **R** while starting any installed
+  game to open the Homebrew Menu. The Album (applet mode) has far less memory;
+  PaperBoat warns about it on start.
+- About 250 MB free on the SD card (NRO, generated `pm64.o2r`, saves, shader list).
+
+## Installation
+
+1. Copy `PaperBoat.nro` to `sdmc:/switch/PaperBoat/PaperBoat.nro`.
+2. Copy your ROM dump to the same folder, e.g. `sdmc:/switch/PaperBoat/Paper Mario (USA).z64`.
+3. Start PaperBoat from the Homebrew Menu (title override).
+4. On first launch answer **Yes** to "No O2R Files... Generate one now?" and
+   **Yes** to "ROMs found". Generation runs on the console (about 40 s of
+   extraction with CPU boost) and writes `pm64.o2r` next to the NRO.
+   After that the ROM can be removed from the SD card.
+
+Alternatively, generate `pm64.o2r` with the desktop build of the same
+PaperBoat version and copy it to `sdmc:/switch/PaperBoat/`.
+
+All user files live in `sdmc:/switch/PaperBoat/`:
+
+| Path | Contents |
+|---|---|
+| `pm64.o2r` | Game assets generated from your ROM |
+| `paperboat.cfg.json` | Settings and controller bindings |
+| `mods/` | Mod archives (`.o2r`), managed from the Mods menu |
+| `logs/` | Game log, `crash-*.txt` crash reports |
+| `shadercache/shaders.list` | Shader variants seen so far, compiled at startup |
+
+## Controls
+
+Nintendo button layout (A right, B bottom). Defaults, all remappable under
+**Settings → Controls**:
+
+| N64 | Switch |
+|---|---|
+| A / B | A / B |
+| Start | + |
+| Z | ZL |
+| R | ZR or R |
+| L | L |
+| C buttons | Right stick |
+| C-Down (partner ability) | X |
+| C-Left (partner select) | Y |
+| D-Pad | D-Pad |
+| Port menu | − (Minus) |
+
+The menu is fully usable with a controller (D-Pad/stick to move, A select,
+B back) and with the touchscreen in handheld mode; text fields open the
+system keyboard.
+
+Supported controllers: handheld, Joy-Con pair, Pro Controller, single Joy-Con
+held sideways. Use **Settings → Switch → Controller setup** to pair
+controllers or switch to a single Joy-Con.
+
+Bindings are only created with these defaults for a fresh config. If you ran
+an earlier build, use **Settings → Controls → Clear Devices** (or delete
+`paperboat.cfg.json`) to pick them up.
+
+## Settings → Switch
+
+- **Preset**: Quality / Balanced / Performance (render scale per mode).
+- **Handheld / Docked render scale** (50–100%), applied automatically when
+  docking or undocking. Output is always native 1280×720 handheld and
+  1920×1080 docked, switched on the fly.
+- **Frame rate**: 30 FPS (original) or 60 FPS (interpolated).
+- **HD Rumble cues**: pulses for successful action commands (stronger on
+  "Super"), jump attacks connecting and damage to Mario; strength slider and
+  test button. The game's own rumble is configured per controller under
+  Controls.
+- **Exit to Homebrew Menu**.
+
+Widescreen is 16:9 by default. For 4:3 with pillarboxes use
+**Settings → Graphics → Advanced Resolution** and the 4:3 aspect preset.
+
+## Building
+
+Requires devkitPro with the Switch toolchain:
+
+```
+dkp-pacman -S switch-dev switch-sdl2 switch-mesa switch-glad switch-zlib switch-bzip2
+```
+
+From a devkitPro MSYS2 (Windows) or Linux shell, with submodules checked out:
+
+```
+cmake -S . -B build-switch -G Ninja \
+      -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+ninja -C build-switch
+```
+
+Output: `build-switch/PaperBoat.nro` (romfs contains `config.yml`, the asset
+YAMLs, `paperboat.o2r` and the starter shader list). On Windows the link step
+goes through `cmake/switch-link-launcher.sh` to avoid the command line limit.
+
+## Debugging
+
+Run with logs on the PC (Homebrew Menu → **Y** for NetLoader):
+
+```
+nxlink -s -p PaperBoat/PaperBoat.nro build-switch/PaperBoat.nro
+```
+
+Lines prefixed with `[switch]` are platform diagnostics: display mode, focus
+and sleep, render scale, CPU boost, memory, per-shader compile times and a
+frame summary every 5 seconds.
+
+On a crash a report with registers, a backtrace and a stack scan is written to
+`sdmc:/switch/PaperBoat/logs/crash-*.txt` (and to nxlink). Offsets resolve
+against the ELF from the same build:
+
+```
+aarch64-none-elf-addr2line -f -C -e build-switch/Paperboat.elf 0x<offset>
+```
+
+## Known issues
+
+- Shaders compile on first use (Mesa here has no program binary support).
+  Variants seen before are compiled at startup (about 2 s with CPU boost);
+  a variant never seen before still causes a one-time hitch.
+- First asset generation keeps the extractor's memory until the game exits.
+- Single sideways Joy-Con and docked 60 FPS are untested.
+
+## Performance
+
+Measured on hardware by the tester; frame times from the `[switch] frames:` log line.
+
+| Mode | Render scale | FPS setting | Avg FPS | Worst frame | Notes |
+|---|---|---|---|---|---|
+| Handheld | 100% | 30 | | | |
+| Handheld | 75% | 30 | | | |
+| Handheld | 100% | 60 | | | |
+| Docked | 100% | 30 | | | |
+| Docked | 75% | 30 | | | |
+| Docked | 100% | 60 | | | |
