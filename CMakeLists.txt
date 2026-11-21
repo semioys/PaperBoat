@@ -62,6 +62,20 @@ if(ANDROID)
     add_compile_definitions(USE_OPENGLES=1)
 endif()
 
+# Nintendo Switch (devkitA64 + libnx): GLES3 on Mesa, same path as Android.
+if(NINTENDO_SWITCH)
+    add_compile_definitions(USE_OPENGLES=1)
+    # newlib hides fileno/fseeko/*_unlocked under strict -std=c++20 (Torch, spdlog).
+    add_compile_definitions(_GNU_SOURCE)
+    # Thousands of objects overflow the Windows command line at link time.
+    # MSYS2's CMake assumes a POSIX ARG_MAX and never emits a response file,
+    # so link through a launcher that builds one (see the script for details).
+    if(CMAKE_HOST_SYSTEM_NAME MATCHES "MSYS|MINGW|CYGWIN")
+        set(CMAKE_C_LINKER_LAUNCHER bash "${CMAKE_SOURCE_DIR}/cmake/switch-link-launcher.sh")
+        set(CMAKE_CXX_LINKER_LAUNCHER bash "${CMAKE_SOURCE_DIR}/cmake/switch-link-launcher.sh")
+    endif()
+endif()
+
 set(NATO_PHONETIC_ALPHABET
   "Alfa" "Bravo" "Charlie" "Delta" "Echo" "Foxtrot" "Golf" "Hotel"
   "India" "Juliett" "Kilo" "Lima" "Mike" "November" "Oscar" "Papa"
@@ -212,7 +226,7 @@ if(EMSCRIPTEN)
 endif()
 
 # None of these can dlopen a native mod, and TCC has no backend for them.
-if(ANDROID OR IOS OR EMSCRIPTEN)
+if(ANDROID OR IOS OR EMSCRIPTEN OR NINTENDO_SWITCH)
     set(ENABLE_SCRIPTING OFF CACHE BOOL "" FORCE)
     set(DISABLE_DLL_LOADER ON CACHE BOOL "" FORCE)
 endif()
@@ -558,7 +572,7 @@ if(IOS)
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/assets/" "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/assets/"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PAPERBOAT_PORT_O2R}" "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/paperboat.o2r"
     )
-elseif(NOT ANDROID AND NOT EMSCRIPTEN)
+elseif(NOT ANDROID AND NOT EMSCRIPTEN AND NOT NINTENDO_SWITCH)
     add_custom_command(
         TARGET ${PROJECT_NAME} POST_BUILD
         COMMENT "Copying config.yml, asset yamls and paperboat.o2r..."
@@ -652,6 +666,27 @@ elseif(APPLE)
         -pthread
     )
     target_link_options(${PROJECT_NAME} PRIVATE -pthread)
+
+elseif(NINTENDO_SWITCH)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        -Wall -Wextra -Wno-error
+        -Wno-unused-parameter
+        -Wno-unused-function
+        -Wno-unused-variable
+        -Wno-missing-field-initializers
+        -Wno-parentheses
+        -Wno-narrowing
+        -Wno-missing-braces
+        -Wno-unknown-pragmas
+        $<$<COMPILE_LANGUAGE:C>:-Wno-incompatible-pointer-types>
+        $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>
+        $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-enum-enum-conversion>
+        -pthread
+    )
+    target_link_options(${PROJECT_NAME} PRIVATE
+        -pthread
+        -Wl,--allow-multiple-definition
+    )
 
 elseif(ANDROID OR EMSCRIPTEN)
     # GL comes from the platform; neither has a desktop OpenGL to find.
@@ -763,6 +798,10 @@ if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
     set(CPACK_GENERATOR "Bundle")
     set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_SOURCE_DIR}/cmake/configure-packaging.cmake)
     include(cmake/packaging.cmake)
+endif()
+
+if(NINTENDO_SWITCH)
+    include(cmake/switch.cmake)
 endif()
 
 message(STATUS "Configuring ${PROJECT_NAME} v${PROJECT_VERSION}")
