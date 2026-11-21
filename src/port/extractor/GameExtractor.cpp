@@ -16,6 +16,10 @@
 #include "spdlog/spdlog.h"
 
 #include "port/FilePicker.h"
+#ifdef __SWITCH__
+#include <chrono>
+#include "ship/port/switch/SwitchImpl.h"
+#endif
 
 #ifdef __EMSCRIPTEN__
 #include "port/web/WebUtils.h"
@@ -304,6 +308,26 @@ bool GameExtractor::GenerateOTRTo(
 ) {
     totalAssets = PAPERBOAT_ASSET_YAML_COUNT;
     assetCount = 0;
+
+#ifdef __SWITCH__
+    // Extraction is a loading screen: use the stock CPU boost and record how
+    // long it takes and how much memory it needs on real hardware.
+    Ship::Switch::ScopedCpuBoost boost;
+    Ship::Switch::LogMemoryUsage("before extraction");
+    const auto extractStart = std::chrono::steady_clock::now();
+    struct ExtractReport {
+        std::chrono::steady_clock::time_point start;
+        ~ExtractReport() {
+            const auto secs =
+                std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)
+                    .count() /
+                1000.0;
+            SPDLOG_INFO("[switch] extraction finished in {:.1f} s", secs);
+            Ship::Switch::LogMemoryUsage("after extraction");
+        }
+    } extractReport { extractStart };
+    SPDLOG_INFO("[switch] extracting: assets='{}' output='{}'", assetsPath, gamePath);
+#endif
 
     sLastError.clear();
     sPhase = 1;
