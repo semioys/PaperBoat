@@ -662,6 +662,11 @@ void GameEngine::RunExtract(int argc, char* argv[]) {
             }
             case ES_EXTRACT_ARGS: {
 #if !defined(__WIIU__)
+                if (args.size() == 0 && !GameExtractor::sLastError.empty() && !AnyRomArchiveExists()) {
+                    // The last extraction failed: show why instead of looping back to "Generate?".
+                    extractStep = ES_VERIFY;
+                    break;
+                }
                 if (args.size() == 0) {
                     PaperboatGui::RegisterPopup(
                         "Run PaperBoat", "All files have been processed. Run PaperBoat?", "Yes", "No",
