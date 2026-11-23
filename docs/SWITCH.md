@@ -88,6 +88,9 @@ an earlier build, use **Settings → Controls → Clear Devices** (or delete
 - **CRT filter**: Off / Subtle / Strong — scanlines (a whole number of pixels
   per line), a faint RGB aperture mask, vignette; Strong adds slight
   curvature. One extra fullscreen pass (`port/shaders/post/crt_*.shader.glsl`).
+- **Edge blur**: Off / Light / Strong — tilt-shift look, sharp centre with a
+  soft blur towards the top and bottom (less on the sides); applied before
+  the CRT filter (`port/shaders/post/edgeblur_*.shader.glsl`).
 - **Reset graphics caches**: reloads all textures and palettes if colours look
   wrong or sprites go missing. Happens automatically when the GPU reports
   `GL_OUT_OF_MEMORY`; every 30 s the log shows texture cache and heap usage.

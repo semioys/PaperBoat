@@ -608,6 +608,12 @@ static const std::unordered_map<int32_t, const char*> switchCrtOptions = {
     { 2, "Strong" },
 };
 
+static const std::unordered_map<int32_t, const char*> switchEdgeBlurOptions = {
+    { 0, "Off" },
+    { 1, "Light" },
+    { 2, "Strong" },
+};
+
 static void ApplySwitchPreset(int32_t preset) {
     float handheld = 1.0f;
     float docked = 1.0f;
@@ -691,6 +697,13 @@ void PaperboatMenu::AddMenuSettingsSwitch() {
         .Options(ComboboxOptions().ComboMap(switchCrtOptions).DefaultIndex(0).Tooltip(
             "Scanlines, a faint RGB aperture mask and a vignette (Strong adds a slight screen "
             "curvature). A single extra pass, practically free."));
+    AddWidget(path, "Edge blur", WIDGET_CVAR_COMBOBOX)
+        .CVar(CVAR_SETTING("Switch.EdgeBlur"))
+        .RaceDisable(false)
+        .Options(ComboboxOptions().ComboMap(switchEdgeBlurOptions).DefaultIndex(0).Tooltip(
+            "Tilt-shift style: the centre of the screen stays sharp and the picture softly blurs "
+            "towards the top and bottom (less on the sides), for a miniature, toy-like look. "
+            "Works together with the CRT filter."));
     AddWidget(path, "Reset graphics caches", WIDGET_BUTTON)
         .RaceDisable(false)
         .Callback([](WidgetInfo& info) { Ship::Switch::RequestGraphicsReset("menu"); })
