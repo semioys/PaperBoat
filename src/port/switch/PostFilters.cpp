@@ -11,6 +11,8 @@
 #include "port/ui/cvar_prefixes.h"
 
 #include <libultraship/libultraship.h>
+#include <fast/Fast3dWindow.h>
+#include <fast/interpreter.h>
 
 extern "C" int GameEngine_RegisterPostPass(const char* o2rShaderPath);
 extern "C" void GameEngine_UnregisterPostPass(int id);
@@ -33,10 +35,46 @@ void RegisterPostFilters_Init() {
     sDirty = true;
 }
 
+// The renderer can be replaced after start-up (and with it its post-pass
+// list), so every half second check that our passes are still registered in
+// the current one.
+static Fast::Interpreter* sRegisteredOn = nullptr;
+
+static bool PassesStillRegistered(Fast::Interpreter* interpreter) {
+    if (interpreter == nullptr || interpreter != sRegisteredOn) {
+        return false;
+    }
+    const auto passes = interpreter->GetPostPasses();
+    auto has = [&](int id) {
+        if (id < 0) {
+            return true;
+        }
+        for (const auto& pass : passes) {
+            if (pass.id == id) {
+                return true;
+            }
+        }
+        return false;
+    };
+    return has(sBlurPass) && has(sCrtPass);
+}
+
 extern "C" void PostFilters_Update(void) {
-    if (!sDirty) {
+    auto window = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetRawInstance()->GetWindow());
+    auto interpreter = window != nullptr ? window->GetInterpreterWeak().lock() : nullptr;
+    static int sFrames = 0;
+    if (!sDirty && ++sFrames >= 30) {
+        sFrames = 0;
+        if ((sBlurPass >= 0 || sCrtPass >= 0) && !PassesStillRegistered(interpreter.get())) {
+            sBlurPass = -1; // ids belong to the old renderer
+            sCrtPass = -1;
+            sDirty = true;
+        }
+    }
+    if (!sDirty || interpreter == nullptr) {
         return;
     }
+    sRegisteredOn = interpreter.get();
     Unregister(sCrtPass);
     Unregister(sBlurPass);
     const int blur = CVarGetInteger(CVAR_SETTING("Switch.EdgeBlur"), 0);
