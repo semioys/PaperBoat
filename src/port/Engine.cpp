@@ -1051,6 +1051,10 @@ void GameEngine::StartFrame() const {
     }
 }
 
+#ifdef __SWITCH__
+extern "C" void PostFilters_Update(void);
+#endif
+
 uint32_t GameEngine::GetInterpolationFPS() {
 #ifdef __SWITCH__
     // Adaptive 60: in scenes that can't hold 60, run a steady 30 for a while
@@ -1188,6 +1192,9 @@ void GameEngine::ProcessGfxCommands(Gfx* commands) {
 
     if (wnd != nullptr) {
         wnd->SetTargetFps(GetInterpolationFPS());
+#ifdef __SWITCH__
+        PostFilters_Update();
+#endif
         wnd->SetMaximumFrameLatency(1);
     }
     RunCommands(commands, mtx_replacements);

@@ -17,6 +17,10 @@ extern "C" void GameEngine_UnregisterPostPass(int id);
 
 static int sBlurPass = -1;
 static int sCrtPass = -1;
+// Settings changed (or the game just started): register on the next frame.
+// At startup the renderer doesn't exist yet when ShipInit runs, so the
+// registration is retried every frame until it succeeds.
+static bool sDirty = true;
 
 static void Unregister(int& pass) {
     if (pass >= 0) {
@@ -26,10 +30,19 @@ static void Unregister(int& pass) {
 }
 
 void RegisterPostFilters_Init() {
+    sDirty = true;
+}
+
+extern "C" void PostFilters_Update(void) {
+    if (!sDirty) {
+        return;
+    }
     Unregister(sCrtPass);
     Unregister(sBlurPass);
+    const int blur = CVarGetInteger(CVAR_SETTING("Switch.EdgeBlur"), 0);
+    const int crt = CVarGetInteger(CVAR_SETTING("Switch.CrtFilter"), 0);
 
-    switch (CVarGetInteger(CVAR_SETTING("Switch.EdgeBlur"), 0)) {
+    switch (blur) {
         case 1:
             sBlurPass = GameEngine_RegisterPostPass("shaders/post/edgeblur_light.shader");
             break;
@@ -39,7 +52,7 @@ void RegisterPostFilters_Init() {
         default:
             break;
     }
-    switch (CVarGetInteger(CVAR_SETTING("Switch.CrtFilter"), 0)) {
+    switch (crt) {
         case 1:
             sCrtPass = GameEngine_RegisterPostPass("shaders/post/crt_subtle.shader");
             break;
@@ -49,6 +62,8 @@ void RegisterPostFilters_Init() {
         default:
             break;
     }
+    // -1 means the renderer isn't up yet: try again next frame.
+    sDirty = (blur != 0 && sBlurPass < 0) || (crt != 0 && sCrtPass < 0);
 }
 
 static RegisterShipInitFunc initPostFiltersFunc(RegisterPostFilters_Init,
