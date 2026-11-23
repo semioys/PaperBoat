@@ -602,6 +602,12 @@ static const std::unordered_map<int32_t, const char*> switchFpsOptions = {
     { 60, "60 FPS (interpolated)" },
 };
 
+static const std::unordered_map<int32_t, const char*> switchCrtOptions = {
+    { 0, "Off" },
+    { 1, "Subtle" },
+    { 2, "Strong" },
+};
+
 static void ApplySwitchPreset(int32_t preset) {
     float handheld = 1.0f;
     float docked = 1.0f;
@@ -673,6 +679,24 @@ void PaperboatMenu::AddMenuSettingsSwitch() {
                      .Tooltip("60 FPS interpolates between the game's 30 FPS frames. Costs CPU: if it "
                               "stutters, go back to 30."));
 
+    AddWidget(path, "Adaptive frame rate", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_SETTING("Switch.AdaptiveFps"))
+        .RaceDisable(false)
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "With 60 FPS selected: when a scene can't keep up, hold a steady 30 FPS for a few "
+            "seconds instead of stuttering, then try 60 again."));
+    AddWidget(path, "CRT filter", WIDGET_CVAR_COMBOBOX)
+        .CVar(CVAR_SETTING("Switch.CrtFilter"))
+        .RaceDisable(false)
+        .Options(ComboboxOptions().ComboMap(switchCrtOptions).DefaultIndex(0).Tooltip(
+            "Scanlines, a faint RGB aperture mask and a vignette (Strong adds a slight screen "
+            "curvature). A single extra pass, practically free."));
+    AddWidget(path, "Reset graphics caches", WIDGET_BUTTON)
+        .RaceDisable(false)
+        .Callback([](WidgetInfo& info) { Ship::Switch::RequestGraphicsReset("menu"); })
+        .Options(ButtonOptions().Tooltip(
+            "If colours look wrong or sprites go missing, reloads all textures and palettes. "
+            "This also happens automatically when the GPU runs out of memory."));
     AddWidget(path, "Background shader compilation (experimental)", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_SETTING("Switch.AsyncShaders"))
         .RaceDisable(false)

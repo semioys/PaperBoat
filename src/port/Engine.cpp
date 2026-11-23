@@ -1052,6 +1052,18 @@ void GameEngine::StartFrame() const {
 }
 
 uint32_t GameEngine::GetInterpolationFPS() {
+#ifdef __SWITCH__
+    // Adaptive 60: in scenes that can't hold 60, run a steady 30 for a while
+    // instead of stuttering (Settings > Switch > Adaptive frame rate).
+    {
+        const uint32_t wanted = CVarGetInteger(CVAR_SETTING("InterpolationFPS"), 30);
+        const bool adaptive = CVarGetInteger(CVAR_SETTING("Switch.AdaptiveFps"), 1) != 0;
+        Ship::Switch::SetHighFrameRateTarget(adaptive && wanted > 30);
+        if (adaptive && wanted > 30 && Ship::Switch::ShouldHoldThirtyFps()) {
+            return 30;
+        }
+    }
+#endif
     if (CVarGetInteger(CVAR_SETTING("MatchRefreshRate"), 0)) {
         return Ship::Context::GetRawInstance()->GetWindow()->GetCurrentRefreshRate();
     }

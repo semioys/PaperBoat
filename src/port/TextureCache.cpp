@@ -94,6 +94,12 @@ void TextureCache_Configure() {
     const uint64_t ceiling = TextureCache_CeilingBytes();
     const int32_t step = std::clamp(CVarGetInteger("gGraphics.TextureCache", 0), 0, 4);
     uint64_t budget = TextureCache_AutoBytes();
+#ifdef __SWITCH__
+    // GPU memory comes out of the same heap as everything else on Switch, and
+    // after hours of play it fragments; fewer large texture allocations keep
+    // uploads from failing. 256 MB still holds several areas' worth.
+    budget = kBaseBudget;
+#endif
     if (step != 0) {
         budget = ceiling * (uint64_t) step / 4;
     }
