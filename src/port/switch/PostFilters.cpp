@@ -13,6 +13,7 @@
 #include <libultraship/libultraship.h>
 #include <fast/Fast3dWindow.h>
 #include <fast/interpreter.h>
+#include "ship/port/switch/SwitchImpl.h"
 
 extern "C" int GameEngine_RegisterPostPass(const char* o2rShaderPath);
 extern "C" void GameEngine_UnregisterPostPass(int id);
@@ -66,6 +67,7 @@ extern "C" void PostFilters_Update(void) {
     if (!sDirty && ++sFrames >= 30) {
         sFrames = 0;
         if ((sBlurPass >= 0 || sCrtPass >= 0) && !PassesStillRegistered(interpreter.get())) {
+            Ship::Switch::Diag("post filters: passes missing from the renderer, registering again");
             sBlurPass = -1; // ids belong to the old renderer
             sCrtPass = -1;
             sDirty = true;
@@ -102,6 +104,8 @@ extern "C" void PostFilters_Update(void) {
     }
     // -1 means the renderer isn't up yet: try again next frame.
     sDirty = (blur != 0 && sBlurPass < 0) || (crt != 0 && sCrtPass < 0);
+    Ship::Switch::Diag("post filters: edge blur %d -> pass %d, crt %d -> pass %d (renderer %p)%s", blur, sBlurPass,
+                       crt, sCrtPass, (void*)interpreter.get(), sDirty ? ", retrying" : "");
 }
 
 static RegisterShipInitFunc initPostFiltersFunc(RegisterPostFilters_Init,

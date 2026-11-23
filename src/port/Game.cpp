@@ -1,3 +1,6 @@
+#ifdef __SWITCH__
+#include "ship/port/switch/SwitchImpl.h"
+#endif
 #include <fast/Fast3dWindow.h>
 #include <fast/interpreter.h>
 #include <libultraship.h>
@@ -151,6 +154,10 @@ extern "C"
                 SDL_Delay(16);
                 continue;
             }
+#ifdef __SWITCH__
+            // Nothing to render yet: the game logic thread hasn't produced a frame.
+            Ship::Switch::ScopedFrameCost waitCost(Ship::Switch::FrameCost::GameWait);
+#endif
             SDL_Delay(1);
         }
 #ifdef __EMSCRIPTEN__
